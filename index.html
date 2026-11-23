@@ -1,1 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Centro Seguro — Análise de Futebol</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: Arial, sans-serif; }
+        body { background: #0f172a; color: #fff; min-height: 100vh; padding: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        header { text-align: center; padding: 20px 0; margin-bottom: 30px; }
+        h1 { font-size: 28px; color: #38bdf8; margin-bottom: 10px; }
+        .aviso { background: rgba(251, 191, 36, 0.1); border: 1px solid #fbbf24; padding: 12px; border-radius: 8px; color: #fcd34d; text-align: center; margin-bottom: 25px; font-size: 14px; }
+        
+        .busca { background: #1e293b; padding: 20px; border-radius: 12px; margin-bottom: 30px; }
+        .busca input { width: 100%; padding: 12px; border-radius: 8px; border: none; background: #334155; color: #fff; font-size: 16px; }
+        
+        .status-legenda { display: flex; flex-wrap: wrap; gap: 15px; margin-bottom: 20px; justify-content: center; }
+        .status-item { display: flex; align-items: center; gap: 6px; font-size: 14px; }
+        .bola { width: 12px; height: 12px; border-radius: 50%; display: inline-block; }
+        .bola-vivo { background: #22c55e; }
+        .bola-encerrado { background: #ef4444; }
+        .bola-aguardando { background: #eab308; }
+        .bola-cancelado { background: #ef4444; }
 
+        .partidas-grid { display: grid; gap: 20px; }
+        .partida-card { background: #1e293b; border-radius: 12px; padding: 20px; border-left: 4px solid #475569; transition: transform 0.2s; }
+        .partida-card:hover { transform: translateY(-2px); }
+        .partida-vivo { border-left-color: #22c55e; }
+        .partida-encerrado { border-left-color: #ef4444; }
+        .partida-aguardando { border-left-color: #eab308; }
+        
+        .partida-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .tempo-jogo { font-size: 14px; color: #94a3b8; }
+        .placar { font-size: 24px; font-weight: bold; text-align: center; margin: 10px 0; }
+        .times { display: flex; justify-content: space-between; font-size: 16px; }
+        
+        .especialistas { margin-top: 15px; padding-top: 15px; border-top: 1px solid #334155; }
+        .especialistas h4 { font-size: 14px; color: #94a3b8; margin-bottom: 10px; }
+        .especialista-row { display: flex; justify-content: space-between; padding: 6px 0; font-size: 14px; }
+        .proje { background: rgba(56, 189, 248, 0.1); padding: 8px 12px; border-radius: 6px; margin-top: 10px; font-size: 14px; }
+        .proje strong { color: #38bdf8; }
+        
+        .sem-dados { text-align: center; padding: 40px; color: #94a3b8; }
+        .carregando { text-align: center; padding: 30px; color: #38bdf8; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>⚽ Centro Seguro — Análise ao Vivo</h1>
+            <p style="color: #94a3b8; font-size: 14px;">7 Especialistas • Leitura em Tempo Real</p>
+        </header>
+
+        <div class="aviso">
+            📊 Usando dados de demonstração — Conectando com Sofascore em breve...
+        </div>
+
+        <div class="busca">
+            <input type="text" id="campoBusca" placeholder="🔍 Buscar por time, liga ou país..." onkeyup="filtrarPartidas()">
+        </div>
+
+        <div class="status-legenda">
+            <div class="status-item"><span class="bola bola-vivo"></span>Ao Vivo</div>
+            <div class="status-item"><span class="bola bola-aguardando"></span>Aguardando</div>
+            <div class="status-item"><span class="bola bola-encerrado"></span>Encerrado</div>
+            <div class="status-item"><span class="bola bola-cancelado"></span>Cancelado/Adiado</div>
+        </div>
+
+        <div id="areaPartidas" class="partidas-grid">
+            <div class="carregando">Carregando partidas...</div>
+        </div>
+    </div>
+
+    <script>
+        const partidasDemo = [
+            { id: 1, timeA: "Brasil U20", timeB: "Peru U20", placarA: 6, placarB: 0, tempo: 62, status: "encerrado", liga: "Amistoso Internacional" },
+            { id: 2, timeA: "Corinthians", timeB: "Palmeiras", placarA: 1, placarB: 1, tempo: 56, status: "vivo", liga: "Brasileirão Série A" },
+            { id: 3, timeA: "Lyon", timeB: "Marseille", placarA: 0, placarB: 0, tempo: 0, status: "aguardando", liga: "Ligue 1" },
+            { id: 4, timeA: "Barcelona", timeB: "Real Madrid", placarA: 2, placarB: 1, tempo: 90, status: "encerrado", liga: "La Liga" },
+            { id: 5, timeA: "Rebels Bangalore", timeB: "South United", placarA: 0, placarB: 1, tempo: 86, status: "vivo", liga: "I-League 2" }
+        ];
+
+        function getStatusClass(status) {
+            switch(status) {
+                case 'vivo': return 'partida-vivo';
+                case 'encerrado': return 'partida-encerrado';
+                case 'aguardando': return 'partida-aguardando';
+                default: return '';
+            }
+        }
+
+        function getBolaStatus(status) {
+            switch(status) {
+                case 'vivo': return '🟢 Ao Vivo';
+                case 'encerrado': return '🔴 Encerrado';
+                case 'aguardando': return '🟡 Aguardando';
+                default: return '';
+            }
+        }
+
+        function renderizarPartidas(lista) {
+            const area = document.getElementById('areaPartidas');
+            if (lista.length === 0) {
+                area.innerHTML = '<div class="sem-dados">Nenhuma partida encontrada 😕</div>';
+                return;
+            }
+            area.innerHTML = lista.map(p => `
+                <div class="partida-card ${getStatusClass(p.status)}">
+                    <div class="partida-header">
+                        <span style="font-size:13px; color:#94a3b8;">${p.liga}</span>
+                        <span class="tempo-jogo">${getBolaStatus(p.status)} ${p.tempo > 0 ? p.tempo + "'" : ''}</span>
+                    </div>
+                    <div class="times">
+                        <span>${p.timeA}</span>
+                        <span>${p.timeB}</span>
+                    </div>
+                    <div class="placar">${p.placarA} × ${p.placarB}</div>
+                    
+                    <div class="especialistas">
+                        <h4>📊 7 Especialistas — Leitura Consolidada</h4>
+                        <div class="especialista-row"><span>📈 Tendência Principal</span><span>${p.placarA > p.placarB ? p.timeA : p.placarB > p.placarA ? p.timeB : 'Equilíbrio'}</span></div>
+                        <div class="especialista-row"><span>⚽ Próximo Gol</span><span>${p.status === 'vivo' ? 'Em análise...' : '—'}</span></div>
+                        <div class="especialista-row"><span>📉 Risco de Gol</span><span>${p.tempo > 75 ? 'Baixo' : p.tempo > 45 ? 'Médio' : 'Alto'}</span></div>
+                    </div>
+                    
+                    <div class="proje">
+                        <strong>🎯 Projeção:</strong> Gols totais ${p.placarA + p.placarB}.5 — 
+                        ${(p.placarA + p.placarB) > 2.5 ? 'Over 2.5 ✅' : 'Under 2.5 ✅'}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function filtrarPartidas() {
+            const termo = document.getElementById('campoBusca').value.toLowerCase();
+            const filtrado = partidasDemo.filter(p =>
+                p.timeA.toLowerCase().includes(termo) ||
+                p.timeB.toLowerCase().includes(termo) ||
+                p.liga.toLowerCase().includes(termo)
+            );
+            renderizarPartidas(filtrado);
+        }
+
+        // Inicializar
+        setTimeout(() => renderizarPartidas(partidasDemo), 500);
+    </script>
+</body>
+</html>
